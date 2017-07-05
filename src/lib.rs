@@ -2,7 +2,7 @@ use std::collections::hash_map::{HashMap, Entry};
 use std::collections::binary_heap::BinaryHeap;
 
 type Pos = (usize,usize);
-type Score = i32;
+pub type Score = i32;
 
 const INDEL: Score = -1;
 const MATCH: Score = 0;
@@ -32,7 +32,7 @@ fn add_state(scores: &mut HashMap<Pos,Score>, q: &mut BinaryHeap<(Score,Pos)>, d
     q.push((priority, pos));
 }
 
-fn alignment_score(a: &[u8], b: &[u8]) -> Score {
+pub fn alignment_score(a: &[u8], b: &[u8]) -> Score {
     let start = (0,0);
     let goal = (a.len(),b.len());
     let goal_diag = diag(&goal);

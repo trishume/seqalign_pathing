@@ -4,3 +4,6 @@ version = "0.1.0"
 authors = ["Tristan Hume <tris.hume@gmail.com>"]
 
 [dependencies]
+
+[dev-dependencies]
+bio = "*"
