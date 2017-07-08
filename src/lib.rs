@@ -23,13 +23,25 @@ fn add_state(scores: &mut HashMap<Pos,Score>, q: &mut BinaryHeap<(Score,Pos)>, d
     match scores.entry(pos) {
         Entry::Vacant(e) => { e.insert(new_score); },
         Entry::Occupied(ref mut e) => {
-            if *(e.get()) > new_score { return; } // obsolete
+            if *(e.get()) >= new_score { return; } // obsolete
             e.insert(new_score);
         }
     }
 
     let priority = new_score + heuristic(&pos, diag);
     q.push((priority, pos));
+}
+
+fn debug_print_table(scores: &HashMap<Pos,Score>, size: Pos) {
+    let (am, bm) = size;
+    for ai in 0..am {
+        for bi in 0..bm {
+            let inside = scores.contains_key(&(ai,bi));
+            let chr = if inside { 'X' } else { ' ' };
+            print!("{}", chr);
+        }
+        println!("");
+    }
 }
 
 pub fn alignment_score(a: &[u8], b: &[u8]) -> Score {
@@ -42,11 +54,18 @@ pub fn alignment_score(a: &[u8], b: &[u8]) -> Score {
     let mut scores: HashMap<Pos,Score> = HashMap::with_capacity(a.len()+b.len());
     scores.insert(start,0);
 
+    let mut pop_count: usize = 0;
+    let mut eval_count: usize = 0;
     loop {
         let (score, pos) = q.pop().expect("should always reach goal");
         let score = score - heuristic(&pos, goal_diag);
+        pop_count += 1;
 
         if pos == goal {
+            println!("scores: {:?}", scores.len());
+            println!("pops: {:?}", pop_count);
+            println!("evals: {:?}", eval_count);
+            // debug_print_table(&scores, goal.clone());
             return score; // found it!
         }
 
@@ -57,6 +76,8 @@ pub fn alignment_score(a: &[u8], b: &[u8]) -> Score {
         } else if score < best_score {
             continue; // we've been here before, but better
         }
+
+        eval_count += 1;
 
         // explore successor states
         let (ai,bi) = pos;

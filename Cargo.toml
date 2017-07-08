@@ -7,3 +7,6 @@ authors = ["Tristan Hume <tris.hume@gmail.com>"]
 
 [dev-dependencies]
 bio = "*"
+
+[profile.release]
+debug = true
