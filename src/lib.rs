@@ -1,5 +1,6 @@
 use std::collections::hash_map::{HashMap, Entry};
 use std::collections::binary_heap::BinaryHeap;
+use std::cmp::max;
 
 type Pos = (usize,usize);
 pub type Score = i32;
@@ -13,13 +14,17 @@ fn diag(pos: &Pos) -> i32 {
 }
 
 // find the distance from the diagonal of `goal` times INDEL
-fn heuristic(pos: &Pos, goal_diag: i32) -> Score {
+fn heuristic(pos: &Pos, goal: &Pos) -> Score {
+    let goal_diag = diag(goal);
     let our_diag = diag(pos);
-    let dist = (our_diag - goal_diag).abs();
-    return dist * INDEL;
+    let indel_dist = (our_diag - goal_diag).abs();
+    // support non-zero MATCH cost
+    let total_dist = max(goal.0 - pos.0, goal.1 - pos.1) as i32;
+    let match_dist = total_dist - indel_dist;
+    return (indel_dist * INDEL) + (match_dist * MATCH);
 }
 
-fn add_state(scores: &mut HashMap<Pos,Score>, q: &mut BinaryHeap<(Score,Pos)>, diag: i32, new_score: Score, pos: Pos) {
+fn add_state(scores: &mut HashMap<Pos,Score>, q: &mut BinaryHeap<(Score,Pos)>, goal: &Pos, new_score: Score, pos: Pos) {
     match scores.entry(pos) {
         Entry::Vacant(e) => { e.insert(new_score); },
         Entry::Occupied(ref mut e) => {
@@ -28,10 +33,11 @@ fn add_state(scores: &mut HashMap<Pos,Score>, q: &mut BinaryHeap<(Score,Pos)>, d
         }
     }
 
-    let priority = new_score + heuristic(&pos, diag);
+    let priority = new_score + heuristic(&pos, goal);
     q.push((priority, pos));
 }
 
+#[allow(dead_code)]
 fn debug_print_table(scores: &HashMap<Pos,Score>, size: Pos) {
     let (am, bm) = size;
     for ai in 0..am {
@@ -47,9 +53,8 @@ fn debug_print_table(scores: &HashMap<Pos,Score>, size: Pos) {
 pub fn alignment_score(a: &[u8], b: &[u8]) -> Score {
     let start = (0,0);
     let goal = (a.len(),b.len());
-    let goal_diag = diag(&goal);
     let mut q = BinaryHeap::with_capacity(a.len()+b.len());
-    q.push((heuristic(&start, goal_diag), start));
+    q.push((heuristic(&start, &goal), start));
 
     let mut scores: HashMap<Pos,Score> = HashMap::with_capacity(a.len()+b.len());
     scores.insert(start,0);
@@ -58,7 +63,7 @@ pub fn alignment_score(a: &[u8], b: &[u8]) -> Score {
     let mut eval_count: usize = 0;
     loop {
         let (score, pos) = q.pop().expect("should always reach goal");
-        let score = score - heuristic(&pos, goal_diag);
+        let score = score - heuristic(&pos, &goal);
         pop_count += 1;
 
         if pos == goal {
@@ -84,10 +89,10 @@ pub fn alignment_score(a: &[u8], b: &[u8]) -> Score {
 
         // indel
         if ai < a.len() {
-            add_state(&mut scores, &mut q, goal_diag, score + INDEL, (ai+1, bi));
+            add_state(&mut scores, &mut q, &goal, score + INDEL, (ai+1, bi));
         }
         if bi < b.len() {
-            add_state(&mut scores, &mut q, goal_diag, score + INDEL, (ai, bi+1));
+            add_state(&mut scores, &mut q, &goal, score + INDEL, (ai, bi+1));
         }
         if ai < a.len() && bi < b.len() {
             let diag_score = if a[ai] == b[bi] {
@@ -95,7 +100,7 @@ pub fn alignment_score(a: &[u8], b: &[u8]) -> Score {
             } else {
                 MISMATCH
             };
-            add_state(&mut scores, &mut q, goal_diag, score + diag_score, (ai+1, bi+1));
+            add_state(&mut scores, &mut q, &goal, score + diag_score, (ai+1, bi+1));
         }
     }
 }
