@@ -5,15 +5,18 @@ use std::cmp::max;
 type Pos = (usize,usize);
 pub type Score = i32;
 
-const INDEL: Score = -1;
-const MATCH: Score = 0;
-const MISMATCH: Score = -1;
+/// The score for inserting or deleting a character, higher is better
+pub const INDEL: Score = -1;
+/// The score for two characters not changing
+pub const MATCH: Score = 0;
+/// The score for one character changing into another
+pub const MISMATCH: Score = -1;
 
 fn diag(pos: &Pos) -> i32 {
     (pos.1 as i32) - (pos.0 as i32)
 }
 
-// find the distance from the diagonal of `goal` times INDEL
+/// find the distance from the diagonal of `goal` times INDEL
 fn heuristic(pos: &Pos, goal: &Pos) -> Score {
     let goal_diag = diag(goal);
     let our_diag = diag(pos);
@@ -24,6 +27,7 @@ fn heuristic(pos: &Pos, goal: &Pos) -> Score {
     return (indel_dist * INDEL) + (match_dist * MATCH);
 }
 
+/// Explore a successor state if we aren't already set to explore it
 fn add_state(scores: &mut HashMap<Pos,Score>, q: &mut BinaryHeap<(Score,Pos)>, goal: &Pos, new_score: Score, pos: Pos) {
     match scores.entry(pos) {
         Entry::Vacant(e) => { e.insert(new_score); },
@@ -37,6 +41,7 @@ fn add_state(scores: &mut HashMap<Pos,Score>, q: &mut BinaryHeap<(Score,Pos)>, g
     q.push((priority, pos));
 }
 
+/// Helper function to print an ASCII representation of which grid cells were explored
 #[allow(dead_code)]
 fn debug_print_table(scores: &HashMap<Pos,Score>, size: Pos) {
     let (am, bm) = size;
@@ -50,6 +55,9 @@ fn debug_print_table(scores: &HashMap<Pos,Score>, size: Pos) {
     }
 }
 
+/// Find the score for aligning `a` and `b` based on the costs given by INDEL,
+/// MATCH and MISMATCH. If INDEL and MISMATCH are -1 and MATCH is 0 then the
+/// result is the negative of the Levenshtein distance of the two inputs.
 pub fn alignment_score(a: &[u8], b: &[u8]) -> Score {
     let start = (0,0);
     let goal = (a.len(),b.len());
@@ -114,20 +122,19 @@ mod tests {
         let a = "GCATGCU";
         let b = "GATTACA";
         let score = alignment_score(a.as_bytes(), b.as_bytes());
-        assert_eq!(-4, score);
+        assert_eq!(2*MISMATCH+4*MATCH+2*INDEL, score);
     }
 
     #[test]
     fn heuristic_1() {
         let tests = vec![
-            ((0,0), (4,4), 0),
-            ((4,3), (4,7), -4),
-            ((1,0), (4,4), -1),
-            ((1,2), (4,4), -1),
+            ((0,0), (4,4), 0*INDEL+4*MATCH),
+            ((4,3), (4,7), 4*INDEL),
+            ((1,0), (4,4), 1*INDEL+3*MATCH),
+            ((1,2), (4,4), 1*INDEL+2*MATCH),
         ];
         for (pos, goal, correct) in tests.into_iter() {
-            let goal_diag = diag(&goal);
-            assert_eq!(correct, heuristic(&pos, goal_diag));
+            assert_eq!(correct, heuristic(&pos, &goal), "{:?} to {:?}", pos, goal);
         }
     }
 }
